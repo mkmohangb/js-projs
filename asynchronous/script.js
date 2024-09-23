@@ -1,7 +1,6 @@
 'use strict';
 
 const countriesContainer = document.querySelector('.countries');
-const btn = document.querySelector('.btn-country');
 
 const renderCountryData = function (data, className = '') {
   console.log(data);
@@ -72,11 +71,23 @@ function fetchCountryData(name) {
     });
 }
 
-function whereAmI(lat, lng) {
-  const token = 'pk.b970f2e04a656523356806d7805c1478';
-  fetch(
-    `https://us1.locationiq.com/v1/reverse?key=${token}&lat=${lat}&lon=${lng}&format=json&`
-  )
+const getLocation = function () {
+  return new Promise(function (resolve, reject) {
+    navigator.geolocation.getCurrentPosition(resolve, reject);
+  });
+};
+
+function whereAmI(lat = 0, lng = 0) {
+  getLocation()
+    .then((pos) => {
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+      console.log(`lat long is ${lat}, ${lng}`);
+      const token = '---';
+      return fetch(
+        `https://us1.locationiq.com/v1/reverse?key=${token}&lat=${lat}&lon=${lng}&format=json&`
+      );
+    })
     .then((response) => {
       if (!response.ok) throw new Error('too many requests');
       return response.json();
@@ -90,11 +101,132 @@ function whereAmI(lat, lng) {
     });
 }
 
-btn.addEventListener('click', function () {
-  //fetchCountryData('Australia');
-  //whereAmI(19.037, 72.873);
-  whereAmI(52.508, 13.381);
-  //whereAmI(-33.933, 18.474);
-});
+//const btn = document.querySelector('.btn-country');
+//btn.addEventListener('click', function () {
+//fetchCountryData('Australia');
+//whereAmI(19.037, 72.873);
+//whereAmI(52.508, 13.381);
+//whereAmI();
+//whereAmI(-33.933, 18.474);
+//});
 
 //fetchCountryData('Sri Lanka');
+const container = document.querySelector('.images');
+const createImage = function (path) {
+  return new Promise(function (resolve, reject) {
+    const img = document.createElement('img');
+    img.src = path;
+    img.addEventListener('load', function () {
+      container.append(img);
+      resolve(img);
+    });
+    img.addEventListener('error', function () {
+      reject(new Error('image not found'));
+    });
+  });
+};
+
+const wait = function (duration) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, duration * 1000);
+  });
+};
+
+// let currentImg;
+// createImage('imgs/img-1.jpg')
+//   .then((img) => {
+//     currentImg = img;
+//     return wait(2);
+//   })
+//   .then(() => {
+//     currentImg.style.display = 'none';
+//     return createImage('imgs/img-2.jpg');
+//   })
+//   .then((img) => {
+//     currentImg = img;
+//     return wait(2);
+//   })
+//   .then(() => (currentImg.style.display = 'none'))
+//   .catch((err) => console.error(err));
+const whereAmIAsync = async function () {
+  try {
+    const pos = await getLocation();
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const token = '____';
+    let resp = await fetch(
+      `https://us1.locationiq.com/v1/reverse?key=${token}&lat=${lat}&lon=${lng}&format=json&`
+    );
+    if (!resp.ok) throw new Error('Problem getting location data');
+    const datag = await resp.json();
+    resp = await fetch(
+      `https://restcountries.com/v3.1/name/${datag.address.country}`
+    );
+    const data = await resp.json();
+    if (!resp.ok) throw new Error('Problem getting country');
+    renderCountryData(data[0]);
+    return `You're in ${datag.address.city}, ${datag.address.country}`;
+  } catch (err) {
+    console.error(err);
+    renderError(`💥 ${err.message}`);
+  }
+};
+
+const btn = document.querySelector('.btn-country');
+//btn.addEventListener('click', whereAmIAsync);
+(async function () {
+  const location = await whereAmIAsync();
+  console.log(location);
+})();
+
+async function get3countries(c1, c2, c3) {
+  try {
+    const data = await Promise.all([
+      getJSON(`https://restcountries.com/v3.1/name/${c1}`),
+      getJSON(`https://restcountries.com/v3.1/name/${c2}`),
+      getJSON(`https://restcountries.com/v3.1/name/${c3}`),
+    ]);
+    console.log(data.map((d) => d[0].capital));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+get3countries('India', 'Poland', 'Australia');
+
+const timeout = function (duration) {
+  return new Promise(function (_, reject) {
+    setTimeout(function () {
+      reject(new Error('Request took long...'));
+    }, duration * 1000);
+  });
+};
+
+Promise.race([
+  getJSON(`https://restcountries.com/v3.1/name/Egypt`),
+  timeout(0.4),
+])
+  .then((res) => console.log(res))
+  .catch((err) => console.log(err));
+
+Promise.allSettled([
+  Promise.resolve('Success'),
+  Promise.reject('ERROR'),
+  Promise.resolve('Another success'),
+]).then((res) => console.log(`all settled: ${res.map((r) => r.value)}`));
+
+Promise.all([
+  Promise.resolve('Success'),
+  Promise.reject('ERROR'),
+  Promise.resolve('Another success'),
+])
+  .then((res) => console.log(res))
+  .catch((err) => console.error(err));
+
+// Promise.any [ES2021]
+Promise.any([
+  Promise.resolve('Success'),
+  Promise.reject('ERROR'),
+  Promise.resolve('Another success'),
+])
+  .then((res) => console.log(`any: ${res}`))
+  .catch((err) => console.error(err));
