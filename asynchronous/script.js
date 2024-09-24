@@ -212,7 +212,7 @@ Promise.allSettled([
   Promise.resolve('Success'),
   Promise.reject('ERROR'),
   Promise.resolve('Another success'),
-]).then((res) => console.log(`all settled: ${res.map((r) => r.value)}`));
+]).then((res) => console.log(`all settled: ${res}`));
 
 Promise.all([
   Promise.resolve('Success'),
@@ -228,5 +228,17 @@ Promise.any([
   Promise.reject('ERROR'),
   Promise.resolve('Another success'),
 ])
-  .then((res) => console.log(`any: ${res}`))
+  .then((res) => console.log(`${res}`))
   .catch((err) => console.error(err));
+
+const loadAll = async function (imgArr) {
+  try {
+    const imgs = imgArr.map(async (img) => await createImage(img));
+    const imgEls = await Promise.all(imgs);
+    imgEls.forEach((element) => element.classList.add('parallel'));
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+loadAll(['imgs/img-1.jpg', 'imgs/img-2.jpg', 'imgs/img-3.jpg']);
